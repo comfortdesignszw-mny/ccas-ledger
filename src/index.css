@@ -275,3 +275,89 @@
     }
   }
 }
+
+/* Print styles for reports */
+@media print {
+  body {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+    background: white !important;
+  }
+
+  .print\:hidden {
+    display: none !important;
+  }
+
+  /* Hide sidebar and navigation */
+  [data-sidebar="sidebar"],
+  nav,
+  header,
+  .no-print {
+    display: none !important;
+  }
+
+  /* Full width content */
+  main {
+    margin: 0 !important;
+    padding: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+  }
+
+  /* Report letterhead styling */
+  .report-letterhead {
+    page-break-inside: avoid;
+  }
+
+  .report-footer {
+    page-break-inside: avoid;
+  }
+
+  /* Table print styles */
+  table {
+    page-break-inside: auto;
+  }
+
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+
+  thead {
+    display: table-header-group;
+  }
+
+  /* Card styling for print */
+  .card {
+    border: 1px solid hsl(var(--border)) !important;
+    box-shadow: none !important;
+  }
+
+  /* Colors for print */
+  .text-income {
+    color: hsl(160 84% 39%) !important;
+  }
+
+  .text-expense {
+    color: hsl(15 75% 55%) !important;
+  }
+
+  /* Page margins */
+  @page {
+    margin: 1in;
+    size: A4;
+  }
+
+  /* Avoid breaks */
+  .page-break-before {
+    page-break-before: always;
+  }
+
+  .page-break-after {
+    page-break-after: always;
+  }
+
+  .avoid-page-break {
+    page-break-inside: avoid;
+  }
+}

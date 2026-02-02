@@ -3,7 +3,7 @@ import { ArrowUpRight, ArrowDownRight } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Transaction } from '@/types';
-import { formatCurrency } from '@/data/mockData';
+import { useChurchSettings } from '@/contexts/ChurchSettingsContext';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 
@@ -12,6 +12,8 @@ interface RecentTransactionsProps {
 }
 
 export function RecentTransactions({ transactions }: RecentTransactionsProps) {
+  const { formatCurrency } = useChurchSettings();
+  
   return (
     <Card className="col-span-full lg:col-span-2">
       <CardHeader className="flex flex-row items-center justify-between">
