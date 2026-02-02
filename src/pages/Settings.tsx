@@ -1,4 +1,5 @@
-import { Settings as SettingsIcon, Database, Bell, Lock, Building2, Download } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Building2, Bell, Lock, Database, Download, Globe } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
@@ -7,14 +8,107 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { useChurchSettings } from '@/contexts/ChurchSettingsContext';
+import { CURRENCY_LIST, CurrencyCode } from '@/types/currency';
+import { toast } from 'sonner';
 
 const Settings = () => {
+  const { settings, updateChurchInfo, updateCurrency, updateSettings, getCurrency } = useChurchSettings();
+  const [churchName, setChurchName] = useState(settings.churchInfo.name);
+  const [churchAddress, setChurchAddress] = useState(settings.churchInfo.address);
+  const [churchPhone, setChurchPhone] = useState(settings.churchInfo.phone);
+  const [churchEmail, setChurchEmail] = useState(settings.churchInfo.email);
+  const [churchMotto, setChurchMotto] = useState(settings.churchInfo.motto || '');
+
+  // Sync local state when settings change
+  useEffect(() => {
+    setChurchName(settings.churchInfo.name);
+    setChurchAddress(settings.churchInfo.address);
+    setChurchPhone(settings.churchInfo.phone);
+    setChurchEmail(settings.churchInfo.email);
+    setChurchMotto(settings.churchInfo.motto || '');
+  }, [settings.churchInfo]);
+
+  const handleSaveChurchInfo = () => {
+    updateChurchInfo({
+      name: churchName,
+      address: churchAddress,
+      phone: churchPhone,
+      email: churchEmail,
+      motto: churchMotto,
+    });
+    toast.success('Church information saved successfully!');
+  };
+
+  const handleCurrencyChange = (currency: CurrencyCode) => {
+    updateCurrency(currency);
+    toast.success(`Currency changed to ${CURRENCY_LIST.find(c => c.code === currency)?.name}`);
+  };
+
+  const handleNotificationChange = (key: keyof typeof settings.notifications, value: boolean) => {
+    updateSettings({
+      notifications: { ...settings.notifications, [key]: value },
+    });
+  };
+
+  const handleSecurityChange = (key: keyof typeof settings.security, value: boolean) => {
+    updateSettings({
+      security: { ...settings.security, [key]: value },
+    });
+  };
+
+  const currentCurrency = getCurrency();
+
   return (
     <AppLayout>
       <Header title="Settings" subtitle="Configure system preferences" />
 
       <div className="page-container">
         <div className="max-w-3xl space-y-6">
+          {/* Currency Settings */}
+          <Card className="border-primary/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5" />
+                Currency Settings
+              </CardTitle>
+              <CardDescription>
+                Set the default currency for all financial transactions and reports
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="currency">Default Currency</Label>
+                <Select value={settings.currency} onValueChange={(value: CurrencyCode) => handleCurrencyChange(value)}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select currency" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {CURRENCY_LIST.map((currency) => (
+                      <SelectItem key={currency.code} value={currency.code}>
+                        <span className="flex items-center gap-2">
+                          <span className="font-mono text-muted-foreground">{currency.symbol}</span>
+                          <span>{currency.name}</span>
+                          <span className="text-xs text-muted-foreground">({currency.code})</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Current: {currentCurrency.name} ({currentCurrency.symbol})
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Church Information */}
           <Card>
             <CardHeader>
@@ -23,25 +117,58 @@ const Settings = () => {
                 Church Information
               </CardTitle>
               <CardDescription>
-                Basic information about your church
+                This information appears on report letterheads and official documents
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
                 <div className="space-y-2">
                   <Label htmlFor="churchName">Church Name</Label>
-                  <Input id="churchName" defaultValue="Grace Community Church" />
+                  <Input 
+                    id="churchName" 
+                    value={churchName}
+                    onChange={(e) => setChurchName(e.target.value)}
+                  />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="currency">Currency</Label>
-                  <Input id="currency" defaultValue="KES" disabled />
+                  <Label htmlFor="motto">Church Motto</Label>
+                  <Input 
+                    id="motto" 
+                    value={churchMotto}
+                    onChange={(e) => setChurchMotto(e.target.value)}
+                    placeholder="Optional tagline or motto"
+                  />
                 </div>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="address">Address</Label>
-                <Input id="address" defaultValue="123 Faith Avenue, Nairobi" />
+                <Input 
+                  id="address" 
+                  value={churchAddress}
+                  onChange={(e) => setChurchAddress(e.target.value)}
+                />
               </div>
-              <Button>Save Changes</Button>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Phone Number</Label>
+                  <Input 
+                    id="phone" 
+                    value={churchPhone}
+                    onChange={(e) => setChurchPhone(e.target.value)}
+                    type="tel"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">Email Address</Label>
+                  <Input 
+                    id="email" 
+                    value={churchEmail}
+                    onChange={(e) => setChurchEmail(e.target.value)}
+                    type="email"
+                  />
+                </div>
+              </div>
+              <Button onClick={handleSaveChurchInfo}>Save Changes</Button>
             </CardContent>
           </Card>
 
@@ -61,10 +188,13 @@ const Settings = () => {
                 <div>
                   <p className="font-medium">Large Transaction Alerts</p>
                   <p className="text-sm text-muted-foreground">
-                    Get notified for transactions above KES 100,000
+                    Get notified for transactions above threshold
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch 
+                  checked={settings.notifications.largeTransactionAlerts}
+                  onCheckedChange={(checked) => handleNotificationChange('largeTransactionAlerts', checked)}
+                />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -74,7 +204,10 @@ const Settings = () => {
                     Reminder to generate monthly financial reports
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch 
+                  checked={settings.notifications.monthlyReportReminders}
+                  onCheckedChange={(checked) => handleNotificationChange('monthlyReportReminders', checked)}
+                />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -84,7 +217,10 @@ const Settings = () => {
                     Weekly reminder to backup your data
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch 
+                  checked={settings.notifications.backupReminders}
+                  onCheckedChange={(checked) => handleNotificationChange('backupReminders', checked)}
+                />
               </div>
             </CardContent>
           </Card>
@@ -108,7 +244,10 @@ const Settings = () => {
                     Two-factor authentication for admin accounts
                   </p>
                 </div>
-                <Switch />
+                <Switch 
+                  checked={settings.security.require2FA}
+                  onCheckedChange={(checked) => handleSecurityChange('require2FA', checked)}
+                />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -118,7 +257,10 @@ const Settings = () => {
                     Auto logout after 30 minutes of inactivity
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch 
+                  checked={settings.security.sessionTimeout}
+                  onCheckedChange={(checked) => handleSecurityChange('sessionTimeout', checked)}
+                />
               </div>
               <Separator />
               <div className="flex items-center justify-between">
@@ -128,7 +270,10 @@ const Settings = () => {
                     Track all user actions for accountability
                   </p>
                 </div>
-                <Switch defaultChecked />
+                <Switch 
+                  checked={settings.security.auditLogging}
+                  onCheckedChange={(checked) => handleSecurityChange('auditLogging', checked)}
+                />
               </div>
             </CardContent>
           </Card>

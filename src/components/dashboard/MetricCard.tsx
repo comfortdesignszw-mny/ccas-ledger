@@ -1,6 +1,6 @@
 import { cn } from '@/lib/utils';
 import { LucideIcon, TrendingUp, TrendingDown, Minus } from 'lucide-react';
-import { formatCurrency } from '@/data/mockData';
+import { useChurchSettings } from '@/contexts/ChurchSettingsContext';
 
 interface MetricCardProps {
   title: string;
@@ -21,6 +21,7 @@ export function MetricCard({
   variant = 'default',
   isCurrency = true,
 }: MetricCardProps) {
+  const { formatCurrency } = useChurchSettings();
   const isPositiveChange = change !== undefined && change > 0;
   const isNegativeChange = change !== undefined && change < 0;
   const isNoChange = change !== undefined && change === 0;

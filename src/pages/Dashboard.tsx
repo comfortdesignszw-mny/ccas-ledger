@@ -11,6 +11,7 @@ import {
   getRecentTransactions,
 } from '@/data/mockData';
 import { TrendingUp, TrendingDown, Wallet, PiggyBank } from 'lucide-react';
+import { useChurchSettings } from '@/contexts/ChurchSettingsContext';
 
 const Dashboard = () => {
   const summary = getFinancialSummary();
@@ -114,17 +115,17 @@ const Dashboard = () => {
                 <UpcomingEvent
                   name="Feast of Booths"
                   date="Feb 15, 2025"
-                  expectedCollection="KES 250,000"
+                  expectedCollection={250000}
                 />
                 <UpcomingEvent
                   name="Easter Service"
                   date="Apr 20, 2025"
-                  expectedCollection="KES 500,000"
+                  expectedCollection={500000}
                 />
                 <UpcomingEvent
                   name="Youth Conference"
                   date="May 10, 2025"
-                  expectedCollection="KES 150,000"
+                  expectedCollection={150000}
                 />
               </div>
             </div>
@@ -161,8 +162,10 @@ function UpcomingEvent({
 }: {
   name: string;
   date: string;
-  expectedCollection: string;
+  expectedCollection: number;
 }) {
+  const { formatCurrency } = useChurchSettings();
+  
   return (
     <div className="flex items-center justify-between rounded-lg bg-muted/50 p-3">
       <div>
@@ -170,7 +173,7 @@ function UpcomingEvent({
         <p className="text-sm text-muted-foreground">{date}</p>
       </div>
       <div className="text-right">
-        <p className="text-sm font-medium text-income">{expectedCollection}</p>
+        <p className="text-sm font-medium text-income">{formatCurrency(expectedCollection)}</p>
         <p className="text-xs text-muted-foreground">Expected</p>
       </div>
     </div>

@@ -3,7 +3,6 @@ import { format } from 'date-fns';
 import {
   ArrowUpRight,
   ArrowDownRight,
-  Filter,
   Download,
   MoreHorizontal,
   Eye,
@@ -35,16 +34,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { transactions, categories, formatCurrency } from '@/data/mockData';
-import { Transaction, TransactionType, PaymentMethod } from '@/types';
+import { transactions, categories } from '@/data/mockData';
+import { Transaction } from '@/types';
 import { cn } from '@/lib/utils';
 import { TransactionForm } from '@/components/transactions/TransactionForm';
+import { useChurchSettings } from '@/contexts/ChurchSettingsContext';
 
 const Transactions = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const { formatCurrency } = useChurchSettings();
 
   const filteredTransactions = transactions.filter((t) => {
     const matchesSearch =
@@ -179,6 +180,7 @@ const Transactions = () => {
                   <TransactionRow
                     key={transaction.id}
                     transaction={transaction}
+                    formatCurrency={formatCurrency}
                   />
                 ))}
               </tbody>
@@ -205,7 +207,13 @@ const Transactions = () => {
   );
 };
 
-function TransactionRow({ transaction }: { transaction: Transaction }) {
+function TransactionRow({ 
+  transaction, 
+  formatCurrency 
+}: { 
+  transaction: Transaction;
+  formatCurrency: (amount: number) => string;
+}) {
   const isIncome = transaction.type === 'income';
 
   return (

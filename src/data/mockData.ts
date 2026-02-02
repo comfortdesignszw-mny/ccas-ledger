@@ -206,12 +206,12 @@ export const getRecentTransactions = (limit: number = 10, trans: Transaction[] =
   return trans.slice(0, limit);
 };
 
-// Format currency (Kenyan Shillings)
+// Legacy format currency - use useChurchSettings().formatCurrency instead
 export const formatCurrency = (amount: number): string => {
-  return new Intl.NumberFormat('en-KE', {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
-    currency: 'KES',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 0,
+    currency: 'USD',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
   }).format(amount);
 };
