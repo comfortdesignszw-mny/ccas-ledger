@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import {
@@ -16,7 +16,8 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { currentUser } from '@/data/mockData';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface NavItem {
   title: string;
@@ -40,7 +41,51 @@ const bottomNavItems: NavItem[] = [
 
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
+  const [userProfile, setUserProfile] = useState<{ fullName: string; role: string } | null>(null);
   const location = useLocation();
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Fetch profile
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('full_name')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        // Fetch role
+        const { data: roleData } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        setUserProfile({
+          fullName: profile?.full_name || user.email || 'User',
+          role: roleData?.role || 'user',
+        });
+      }
+    };
+
+    fetchUserProfile();
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(() => {
+      fetchUserProfile();
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const handleLogout = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      toast.error('Failed to sign out');
+    } else {
+      toast.success('Signed out successfully');
+    }
+  };
 
   const NavLink = ({ item }: { item: NavItem }) => {
     const isActive = location.pathname === item.href;
@@ -80,6 +125,12 @@ export function Sidebar() {
 
     return linkContent;
   };
+
+  const initials = userProfile?.fullName
+    .split(' ')
+    .map((n) => n[0])
+    .join('')
+    .toUpperCase() || 'U';
 
   return (
     <aside
@@ -130,15 +181,15 @@ export function Sidebar() {
           )}
         >
           <div className="flex h-9 w-9 items-center justify-center rounded-full bg-sidebar-accent text-sm font-semibold text-sidebar-accent-foreground">
-            {currentUser.fullName.split(' ').map(n => n[0]).join('')}
+            {initials}
           </div>
-          {!collapsed && (
+          {!collapsed && userProfile && (
             <div className="flex-1 min-w-0">
               <p className="truncate text-sm font-medium text-sidebar-foreground">
-                {currentUser.fullName}
+                {userProfile.fullName}
               </p>
               <p className="truncate text-xs text-sidebar-muted capitalize">
-                {currentUser.role.replace('_', ' ')}
+                {userProfile.role.replace('_', ' ')}
               </p>
             </div>
           )}
@@ -146,6 +197,7 @@ export function Sidebar() {
             <Button
               variant="ghost"
               size="icon"
+              onClick={handleLogout}
               className="h-8 w-8 text-sidebar-muted hover:text-sidebar-foreground hover:bg-sidebar-accent"
             >
               <LogOut className="h-4 w-4" />

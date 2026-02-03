@@ -19,11 +19,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  transactions,
-  categories,
-  getMonthlyData,
-} from '@/data/mockData';
+import { useTransactions, getMonthlyData } from '@/hooks/useTransactions';
+import { useCategories } from '@/hooks/useCategories';
+import { useAuth } from '@/hooks/useAuth';
+import { AuthForm } from '@/components/auth/AuthForm';
 import { cn } from '@/lib/utils';
 import {
   LineChart,
@@ -39,13 +38,30 @@ import { useChurchSettings } from '@/contexts/ChurchSettingsContext';
 import { ReportLetterhead } from '@/components/reports/ReportLetterhead';
 import { ReportFooter } from '@/components/reports/ReportFooter';
 import { usePrintReport } from '@/hooks/usePrintReport';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const Reports = () => {
   const [selectedMonth, setSelectedMonth] = useState<string>('current');
-  const monthlyData = getMonthlyData();
-  const { formatCurrency, getCurrency } = useChurchSettings();
+  const { formatCurrency } = useChurchSettings();
   const { printRef, handlePrint, handleExportPDF } = usePrintReport();
-  const currency = getCurrency();
+
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { data: transactions = [], isLoading } = useTransactions();
+  const { data: categories = [] } = useCategories();
+
+  const monthlyData = getMonthlyData(transactions);
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <AuthForm />;
+  }
 
   // Get report date range
   const getDateRange = () => {
@@ -69,7 +85,7 @@ const Reports = () => {
 
   // Filter transactions for selected period
   const periodTransactions = transactions.filter((t) => {
-    const date = new Date(t.transactionDate);
+    const date = new Date(t.transaction_date);
     return date >= dateRange.start && date <= dateRange.end;
   });
 
@@ -80,9 +96,9 @@ const Reports = () => {
     (t) => t.type === 'expense'
   );
 
-  const totalIncome = incomeTransactions.reduce((sum, t) => sum + t.amount, 0);
+  const totalIncome = incomeTransactions.reduce((sum, t) => sum + Number(t.amount), 0);
   const totalExpenses = expenseTransactions.reduce(
-    (sum, t) => sum + t.amount,
+    (sum, t) => sum + Number(t.amount),
     0
   );
 
@@ -91,8 +107,8 @@ const Reports = () => {
     .filter((c) => c.type === 'income')
     .map((cat) => {
       const amount = incomeTransactions
-        .filter((t) => t.categoryId === cat.id)
-        .reduce((sum, t) => sum + t.amount, 0);
+        .filter((t) => t.category_id === cat.id)
+        .reduce((sum, t) => sum + Number(t.amount), 0);
       return { name: cat.name, amount };
     })
     .filter((c) => c.amount > 0)
@@ -102,8 +118,8 @@ const Reports = () => {
     .filter((c) => c.type === 'expense')
     .map((cat) => {
       const amount = expenseTransactions
-        .filter((t) => t.categoryId === cat.id)
-        .reduce((sum, t) => sum + t.amount, 0);
+        .filter((t) => t.category_id === cat.id)
+        .reduce((sum, t) => sum + Number(t.amount), 0);
       return { name: cat.name, amount };
     })
     .filter((c) => c.amount > 0)
@@ -174,164 +190,173 @@ const Reports = () => {
               </div>
             </CardHeader>
             <CardContent className="pt-6">
-              {/* Summary Cards */}
-              <div className="mb-8 grid gap-4 sm:grid-cols-3">
-                <div className="rounded-lg border-l-4 border-l-income bg-income/5 p-4 print:border print:border-income/30">
-                  <div className="flex items-center gap-2">
-                    <TrendingUp className="h-5 w-5 text-income" />
-                    <span className="font-medium">Total Income</span>
-                  </div>
-                  <p className="mt-2 text-2xl font-bold text-income">
-                    {formatCurrency(totalIncome)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {incomeTransactions.length} transactions
-                  </p>
+              {isLoading ? (
+                <div className="space-y-4">
+                  <Skeleton className="h-32 w-full" />
+                  <Skeleton className="h-32 w-full" />
                 </div>
-                <div className="rounded-lg border-l-4 border-l-expense bg-expense/5 p-4 print:border print:border-expense/30">
-                  <div className="flex items-center gap-2">
-                    <TrendingDown className="h-5 w-5 text-expense" />
-                    <span className="font-medium">Total Expenses</span>
-                  </div>
-                  <p className="mt-2 text-2xl font-bold text-expense">
-                    {formatCurrency(totalExpenses)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {expenseTransactions.length} transactions
-                  </p>
-                </div>
-                <div
-                  className={cn(
-                    'rounded-lg border-l-4 p-4 print:border',
-                    totalIncome - totalExpenses >= 0
-                      ? 'border-l-income bg-income/5 print:border-income/30'
-                      : 'border-l-expense bg-expense/5 print:border-expense/30'
-                  )}
-                >
-                  <div className="flex items-center gap-2">
-                    <span className="font-medium">Net Balance</span>
-                  </div>
-                  <p
-                    className={cn(
-                      'mt-2 text-2xl font-bold',
-                      totalIncome - totalExpenses >= 0
-                        ? 'text-income'
-                        : 'text-expense'
-                    )}
-                  >
-                    {formatCurrency(totalIncome - totalExpenses)}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {totalIncome - totalExpenses >= 0 ? 'Surplus' : 'Deficit'}
-                  </p>
-                </div>
-              </div>
-
-              {/* Category Breakdown */}
-              <div className="grid gap-8 lg:grid-cols-2">
-                {/* Income by Category */}
-                <div>
-                  <h3 className="mb-4 font-semibold">Income by Category</h3>
-                  <div className="space-y-3">
-                    {incomeByCategory.map((cat) => (
-                      <div key={cat.name}>
-                        <div className="mb-1 flex justify-between text-sm">
-                          <span>{cat.name}</span>
-                          <span className="font-medium">
-                            {formatCurrency(cat.amount)}
-                          </span>
-                        </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="h-full rounded-full bg-income transition-all"
-                            style={{
-                              width: `${
-                                totalIncome > 0
-                                  ? (cat.amount / totalIncome) * 100
-                                  : 0
-                              }%`,
-                            }}
-                          />
-                        </div>
+              ) : (
+                <>
+                  {/* Summary Cards */}
+                  <div className="mb-8 grid gap-4 sm:grid-cols-3">
+                    <div className="rounded-lg border-l-4 border-l-income bg-income/5 p-4 print:border print:border-income/30">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5 text-income" />
+                        <span className="font-medium">Total Income</span>
                       </div>
-                    ))}
-                    {incomeByCategory.length === 0 && (
-                      <p className="text-sm text-muted-foreground">
-                        No income recorded
+                      <p className="mt-2 text-2xl font-bold text-income">
+                        {formatCurrency(totalIncome)}
                       </p>
-                    )}
-                  </div>
-                </div>
-
-                {/* Expenses by Category */}
-                <div>
-                  <h3 className="mb-4 font-semibold">Expenses by Category</h3>
-                  <div className="space-y-3">
-                    {expensesByCategory.map((cat) => (
-                      <div key={cat.name}>
-                        <div className="mb-1 flex justify-between text-sm">
-                          <span>{cat.name}</span>
-                          <span className="font-medium">
-                            {formatCurrency(cat.amount)}
-                          </span>
-                        </div>
-                        <div className="h-2 overflow-hidden rounded-full bg-muted">
-                          <div
-                            className="h-full rounded-full bg-expense transition-all"
-                            style={{
-                              width: `${
-                                totalExpenses > 0
-                                  ? (cat.amount / totalExpenses) * 100
-                                  : 0
-                              }%`,
-                            }}
-                          />
-                        </div>
+                      <p className="text-sm text-muted-foreground">
+                        {incomeTransactions.length} transactions
+                      </p>
+                    </div>
+                    <div className="rounded-lg border-l-4 border-l-expense bg-expense/5 p-4 print:border print:border-expense/30">
+                      <div className="flex items-center gap-2">
+                        <TrendingDown className="h-5 w-5 text-expense" />
+                        <span className="font-medium">Total Expenses</span>
                       </div>
-                    ))}
-                    {expensesByCategory.length === 0 && (
-                      <p className="text-sm text-muted-foreground">
-                        No expenses recorded
+                      <p className="mt-2 text-2xl font-bold text-expense">
+                        {formatCurrency(totalExpenses)}
                       </p>
-                    )}
+                      <p className="text-sm text-muted-foreground">
+                        {expenseTransactions.length} transactions
+                      </p>
+                    </div>
+                    <div
+                      className={cn(
+                        'rounded-lg border-l-4 p-4 print:border',
+                        totalIncome - totalExpenses >= 0
+                          ? 'border-l-income bg-income/5 print:border-income/30'
+                          : 'border-l-expense bg-expense/5 print:border-expense/30'
+                      )}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">Net Balance</span>
+                      </div>
+                      <p
+                        className={cn(
+                          'mt-2 text-2xl font-bold',
+                          totalIncome - totalExpenses >= 0
+                            ? 'text-income'
+                            : 'text-expense'
+                        )}
+                      >
+                        {formatCurrency(totalIncome - totalExpenses)}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {totalIncome - totalExpenses >= 0 ? 'Surplus' : 'Deficit'}
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Transaction Summary Table for Print */}
-              <div className="mt-8 hidden print:block">
-                <h3 className="mb-4 font-semibold">Transaction Summary</h3>
-                <table className="w-full border-collapse text-sm">
-                  <thead>
-                    <tr className="border-b">
-                      <th className="py-2 text-left">Category</th>
-                      <th className="py-2 text-right">Income</th>
-                      <th className="py-2 text-right">Expenses</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {incomeByCategory.map((cat) => (
-                      <tr key={cat.name} className="border-b">
-                        <td className="py-2">{cat.name}</td>
-                        <td className="py-2 text-right text-income">{formatCurrency(cat.amount)}</td>
-                        <td className="py-2 text-right">-</td>
-                      </tr>
-                    ))}
-                    {expensesByCategory.map((cat) => (
-                      <tr key={cat.name} className="border-b">
-                        <td className="py-2">{cat.name}</td>
-                        <td className="py-2 text-right">-</td>
-                        <td className="py-2 text-right text-expense">{formatCurrency(cat.amount)}</td>
-                      </tr>
-                    ))}
-                    <tr className="font-bold">
-                      <td className="py-2">TOTAL</td>
-                      <td className="py-2 text-right text-income">{formatCurrency(totalIncome)}</td>
-                      <td className="py-2 text-right text-expense">{formatCurrency(totalExpenses)}</td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
+                  {/* Category Breakdown */}
+                  <div className="grid gap-8 lg:grid-cols-2">
+                    {/* Income by Category */}
+                    <div>
+                      <h3 className="mb-4 font-semibold">Income by Category</h3>
+                      <div className="space-y-3">
+                        {incomeByCategory.map((cat) => (
+                          <div key={cat.name}>
+                            <div className="mb-1 flex justify-between text-sm">
+                              <span>{cat.name}</span>
+                              <span className="font-medium">
+                                {formatCurrency(cat.amount)}
+                              </span>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-muted">
+                              <div
+                                className="h-full rounded-full bg-income transition-all"
+                                style={{
+                                  width: `${
+                                    totalIncome > 0
+                                      ? (cat.amount / totalIncome) * 100
+                                      : 0
+                                  }%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                        {incomeByCategory.length === 0 && (
+                          <p className="text-sm text-muted-foreground">
+                            No income recorded
+                          </p>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Expenses by Category */}
+                    <div>
+                      <h3 className="mb-4 font-semibold">Expenses by Category</h3>
+                      <div className="space-y-3">
+                        {expensesByCategory.map((cat) => (
+                          <div key={cat.name}>
+                            <div className="mb-1 flex justify-between text-sm">
+                              <span>{cat.name}</span>
+                              <span className="font-medium">
+                                {formatCurrency(cat.amount)}
+                              </span>
+                            </div>
+                            <div className="h-2 overflow-hidden rounded-full bg-muted">
+                              <div
+                                className="h-full rounded-full bg-expense transition-all"
+                                style={{
+                                  width: `${
+                                    totalExpenses > 0
+                                      ? (cat.amount / totalExpenses) * 100
+                                      : 0
+                                  }%`,
+                                }}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                        {expensesByCategory.length === 0 && (
+                          <p className="text-sm text-muted-foreground">
+                            No expenses recorded
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Transaction Summary Table for Print */}
+                  <div className="mt-8 hidden print:block">
+                    <h3 className="mb-4 font-semibold">Transaction Summary</h3>
+                    <table className="w-full border-collapse text-sm">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="py-2 text-left">Category</th>
+                          <th className="py-2 text-right">Income</th>
+                          <th className="py-2 text-right">Expenses</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {incomeByCategory.map((cat) => (
+                          <tr key={cat.name} className="border-b">
+                            <td className="py-2">{cat.name}</td>
+                            <td className="py-2 text-right text-income">{formatCurrency(cat.amount)}</td>
+                            <td className="py-2 text-right">-</td>
+                          </tr>
+                        ))}
+                        {expensesByCategory.map((cat) => (
+                          <tr key={cat.name} className="border-b">
+                            <td className="py-2">{cat.name}</td>
+                            <td className="py-2 text-right">-</td>
+                            <td className="py-2 text-right text-expense">{formatCurrency(cat.amount)}</td>
+                          </tr>
+                        ))}
+                        <tr className="font-bold">
+                          <td className="py-2">TOTAL</td>
+                          <td className="py-2 text-right text-income">{formatCurrency(totalIncome)}</td>
+                          <td className="py-2 text-right text-expense">{formatCurrency(totalExpenses)}</td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
 

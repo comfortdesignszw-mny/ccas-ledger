@@ -16,11 +16,15 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { useChurchSettings } from '@/contexts/ChurchSettingsContext';
+import { useAuth } from '@/hooks/useAuth';
+import { AuthForm } from '@/components/auth/AuthForm';
 import { CURRENCY_LIST, CurrencyCode } from '@/types/currency';
 import { toast } from 'sonner';
 
 const Settings = () => {
   const { settings, updateChurchInfo, updateCurrency, updateSettings, getCurrency } = useChurchSettings();
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  
   const [churchName, setChurchName] = useState(settings.churchInfo.name);
   const [churchAddress, setChurchAddress] = useState(settings.churchInfo.address);
   const [churchPhone, setChurchPhone] = useState(settings.churchInfo.phone);
@@ -35,6 +39,18 @@ const Settings = () => {
     setChurchEmail(settings.churchInfo.email);
     setChurchMotto(settings.churchInfo.motto || '');
   }, [settings.churchInfo]);
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <AuthForm />;
+  }
 
   const handleSaveChurchInfo = () => {
     updateChurchInfo({

@@ -1,50 +1,31 @@
-import { Calendar, Plus } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { formatCurrency } from '@/data/mockData';
+import { useChurchSettings } from '@/contexts/ChurchSettingsContext';
+import { useAuth } from '@/hooks/useAuth';
+import { AuthForm } from '@/components/auth/AuthForm';
 
-const churchEvents = [
-  {
-    id: '1',
-    name: 'Feast of Passover',
-    date: new Date('2025-04-13'),
-    expectedPerMember: 5000,
-    totalMembers: 150,
-    collected: 420000,
-    status: 'upcoming',
-  },
-  {
-    id: '2',
-    name: 'Pentecost Celebration',
-    date: new Date('2025-06-08'),
-    expectedPerMember: 3000,
-    totalMembers: 150,
-    collected: 0,
-    status: 'upcoming',
-  },
-  {
-    id: '3',
-    name: 'Feast of Booths',
-    date: new Date('2025-10-13'),
-    expectedPerMember: 10000,
-    totalMembers: 150,
-    collected: 0,
-    status: 'upcoming',
-  },
-  {
-    id: '4',
-    name: '10 Days Feast',
-    date: new Date('2024-10-03'),
-    expectedPerMember: 8000,
-    totalMembers: 140,
-    collected: 980000,
-    status: 'completed',
-  },
-];
+// Placeholder data - will be replaced with database when events table is created
+const churchEvents: any[] = [];
 
 const Events = () => {
+  const { formatCurrency } = useChurchSettings();
+  const { isAuthenticated, loading: authLoading } = useAuth();
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <AuthForm />;
+  }
+
   return (
     <AppLayout>
       <Header
@@ -55,35 +36,48 @@ const Events = () => {
       />
 
       <div className="page-container">
-        {/* Upcoming Events */}
-        <div className="mb-8">
-          <h2 className="mb-4 text-lg font-semibold">Upcoming Events</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {churchEvents
-              .filter((e) => e.status === 'upcoming')
-              .map((event) => (
-                <EventCard key={event.id} event={event} />
-              ))}
+        {churchEvents.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <Calendar className="h-16 w-16 text-muted-foreground/50 mb-4" />
+            <h3 className="text-lg font-semibold mb-2">No Events Yet</h3>
+            <p className="text-muted-foreground text-center max-w-md">
+              Church events will appear here. Click "Add Event" to create your first event
+              and start tracking contributions.
+            </p>
           </div>
-        </div>
+        ) : (
+          <>
+            {/* Upcoming Events */}
+            <div className="mb-8">
+              <h2 className="mb-4 text-lg font-semibold">Upcoming Events</h2>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {churchEvents
+                  .filter((e) => e.status === 'upcoming')
+                  .map((event) => (
+                    <EventCard key={event.id} event={event} formatCurrency={formatCurrency} />
+                  ))}
+              </div>
+            </div>
 
-        {/* Past Events */}
-        <div>
-          <h2 className="mb-4 text-lg font-semibold">Past Events</h2>
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {churchEvents
-              .filter((e) => e.status === 'completed')
-              .map((event) => (
-                <EventCard key={event.id} event={event} />
-              ))}
-          </div>
-        </div>
+            {/* Past Events */}
+            <div>
+              <h2 className="mb-4 text-lg font-semibold">Past Events</h2>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {churchEvents
+                  .filter((e) => e.status === 'completed')
+                  .map((event) => (
+                    <EventCard key={event.id} event={event} formatCurrency={formatCurrency} />
+                  ))}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </AppLayout>
   );
 };
 
-function EventCard({ event }: { event: (typeof churchEvents)[0] }) {
+function EventCard({ event, formatCurrency }: { event: any; formatCurrency: (amount: number) => string }) {
   const expectedTotal = event.expectedPerMember * event.totalMembers;
   const progress =
     expectedTotal > 0 ? (event.collected / expectedTotal) * 100 : 0;
@@ -97,7 +91,7 @@ function EventCard({ event }: { event: (typeof churchEvents)[0] }) {
             <CardTitle className="text-base">{event.name}</CardTitle>
             <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
               <Calendar className="h-3.5 w-3.5" />
-              {event.date.toLocaleDateString('en-US', {
+              {new Date(event.date).toLocaleDateString('en-US', {
                 month: 'long',
                 day: 'numeric',
                 year: 'numeric',

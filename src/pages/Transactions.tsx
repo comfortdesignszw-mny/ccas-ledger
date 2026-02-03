@@ -28,48 +28,80 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog';
-import { transactions, categories } from '@/data/mockData';
-import { Transaction } from '@/types';
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { TransactionDialog } from '@/components/transactions/TransactionDialog';
+import { useTransactions, useDeleteTransaction, type Transaction } from '@/hooks/useTransactions';
+import { useCategories } from '@/hooks/useCategories';
+import { useAuth } from '@/hooks/useAuth';
+import { AuthForm } from '@/components/auth/AuthForm';
 import { cn } from '@/lib/utils';
-import { TransactionForm } from '@/components/transactions/TransactionForm';
 import { useChurchSettings } from '@/contexts/ChurchSettingsContext';
+import { Skeleton } from '@/components/ui/skeleton';
 
 const Transactions = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
+  
   const { formatCurrency } = useChurchSettings();
+  const { isAuthenticated, loading: authLoading } = useAuth();
+  const { data: transactions = [], isLoading } = useTransactions();
+  const { data: categories = [] } = useCategories();
+  const deleteTransaction = useDeleteTransaction();
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <AuthForm />;
+  }
 
   const filteredTransactions = transactions.filter((t) => {
     const matchesSearch =
       t.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      t.category?.name.toLowerCase().includes(searchQuery.toLowerCase());
+      t.categories?.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesType = typeFilter === 'all' || t.type === typeFilter;
     const matchesCategory =
-      categoryFilter === 'all' || t.categoryId === categoryFilter;
+      categoryFilter === 'all' || t.category_id === categoryFilter;
 
     return matchesSearch && matchesType && matchesCategory;
   });
 
   const totalIncome = filteredTransactions
     .filter((t) => t.type === 'income')
-    .reduce((sum, t) => sum + t.amount, 0);
+    .reduce((sum, t) => sum + Number(t.amount), 0);
 
   const totalExpenses = filteredTransactions
     .filter((t) => t.type === 'expense')
-    .reduce((sum, t) => sum + t.amount, 0);
+    .reduce((sum, t) => sum + Number(t.amount), 0);
 
-  const handleAddTransaction = (data: any) => {
-    console.log('New transaction:', data);
-    setIsDialogOpen(false);
-    // In a real app, this would save to the database
+  const handleDeleteClick = (id: string) => {
+    setSelectedTransactionId(id);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (selectedTransactionId) {
+      deleteTransaction.mutate(selectedTransactionId);
+    }
+    setDeleteDialogOpen(false);
+    setSelectedTransactionId(null);
   };
 
   return (
@@ -77,6 +109,9 @@ const Transactions = () => {
       <Header
         title="Transactions"
         subtitle="Manage income and expense records"
+        showAddButton
+        addButtonLabel="Add Transaction"
+        onAddClick={() => setIsDialogOpen(true)}
       />
 
       <div className="page-container">
@@ -145,19 +180,6 @@ const Transactions = () => {
               <Download className="h-4 w-4" />
               Export
             </Button>
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-              <DialogTrigger asChild>
-                <Button size="sm" className="gap-2">
-                  Add Transaction
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-lg">
-                <DialogHeader>
-                  <DialogTitle>Add New Transaction</DialogTitle>
-                </DialogHeader>
-                <TransactionForm onSubmit={handleAddTransaction} />
-              </DialogContent>
-            </Dialog>
           </div>
         </div>
 
@@ -176,18 +198,27 @@ const Transactions = () => {
                 </tr>
               </thead>
               <tbody>
-                {filteredTransactions.slice(0, 50).map((transaction) => (
-                  <TransactionRow
-                    key={transaction.id}
-                    transaction={transaction}
-                    formatCurrency={formatCurrency}
-                  />
-                ))}
+                {isLoading ? (
+                  <tr>
+                    <td colSpan={6}>
+                      <Skeleton className="h-16 w-full" />
+                    </td>
+                  </tr>
+                ) : (
+                  filteredTransactions.slice(0, 50).map((transaction) => (
+                    <TransactionRow
+                      key={transaction.id}
+                      transaction={transaction}
+                      formatCurrency={formatCurrency}
+                      onDelete={handleDeleteClick}
+                    />
+                  ))
+                )}
               </tbody>
             </table>
           </div>
 
-          {filteredTransactions.length === 0 && (
+          {!isLoading && filteredTransactions.length === 0 && (
             <div className="empty-state border-0 py-16">
               <p className="text-muted-foreground">No transactions found</p>
               <p className="text-sm text-muted-foreground">
@@ -198,21 +229,44 @@ const Transactions = () => {
         </div>
 
         {/* Pagination info */}
-        <div className="mt-4 text-center text-sm text-muted-foreground">
-          Showing {Math.min(filteredTransactions.length, 50)} of{' '}
-          {filteredTransactions.length} transactions
-        </div>
+        {filteredTransactions.length > 0 && (
+          <div className="mt-4 text-center text-sm text-muted-foreground">
+            Showing {Math.min(filteredTransactions.length, 50)} of{' '}
+            {filteredTransactions.length} transactions
+          </div>
+        )}
       </div>
+
+      <TransactionDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Transaction</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this transaction? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 };
 
 function TransactionRow({ 
   transaction, 
-  formatCurrency 
+  formatCurrency,
+  onDelete,
 }: { 
   transaction: Transaction;
   formatCurrency: (amount: number) => string;
+  onDelete: (id: string) => void;
 }) {
   const isIncome = transaction.type === 'income';
 
@@ -232,7 +286,7 @@ function TransactionRow({
               <ArrowDownRight className="h-4 w-4" />
             )}
           </div>
-          <span>{format(new Date(transaction.transactionDate), 'MMM d, yyyy')}</span>
+          <span>{format(new Date(transaction.transaction_date), 'MMM d, yyyy')}</span>
         </div>
       </td>
       <td>
@@ -245,11 +299,11 @@ function TransactionRow({
             isIncome ? 'badge-income' : 'badge-expense'
           )}
         >
-          {transaction.category?.name}
+          {transaction.categories?.name || 'Uncategorized'}
         </span>
       </td>
       <td className="capitalize text-muted-foreground">
-        {transaction.paymentMethod.replace('_', ' ')}
+        {transaction.payment_method.replace('_', ' ')}
       </td>
       <td className="text-right">
         <span
@@ -259,7 +313,7 @@ function TransactionRow({
           )}
         >
           {isIncome ? '+' : '-'}
-          {formatCurrency(transaction.amount)}
+          {formatCurrency(Number(transaction.amount))}
         </span>
       </td>
       <td>
@@ -277,7 +331,10 @@ function TransactionRow({
               <Edit className="h-4 w-4" /> Edit
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="gap-2 text-destructive">
+            <DropdownMenuItem 
+              className="gap-2 text-destructive"
+              onClick={() => onDelete(transaction.id)}
+            >
               <Trash2 className="h-4 w-4" /> Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
