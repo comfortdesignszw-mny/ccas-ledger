@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Package, Plus, MoreHorizontal, Edit, Trash2, Eye } from 'lucide-react';
+import { Package, MoreHorizontal, Edit, Trash2, Eye } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,9 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { formatCurrency } from '@/data/mockData';
+import { useChurchSettings } from '@/contexts/ChurchSettingsContext';
+import { useAuth } from '@/hooks/useAuth';
+import { AuthForm } from '@/components/auth/AuthForm';
 import { cn } from '@/lib/utils';
 
 type AssetStatus = 'active' | 'damaged' | 'sold';
@@ -35,72 +37,26 @@ interface Asset {
   status: AssetStatus;
 }
 
-const assets: Asset[] = [
-  {
-    id: '1',
-    name: 'Sound System',
-    category: 'Electronics',
-    serialNumber: 'SS-2024-001',
-    location: 'Main Sanctuary',
-    purchaseDate: new Date('2023-06-15'),
-    purchaseValue: 350000,
-    status: 'active',
-  },
-  {
-    id: '2',
-    name: 'Church Van',
-    category: 'Vehicles',
-    serialNumber: 'KCA 123X',
-    location: 'Parking Lot',
-    purchaseDate: new Date('2022-01-20'),
-    purchaseValue: 2500000,
-    status: 'active',
-  },
-  {
-    id: '3',
-    name: 'Projector',
-    category: 'Electronics',
-    serialNumber: 'PJ-2023-002',
-    location: 'Main Sanctuary',
-    purchaseDate: new Date('2023-03-10'),
-    purchaseValue: 85000,
-    status: 'active',
-  },
-  {
-    id: '4',
-    name: 'Office Computers (5)',
-    category: 'Electronics',
-    serialNumber: 'PC-2022-005',
-    location: 'Church Office',
-    purchaseDate: new Date('2022-08-01'),
-    purchaseValue: 250000,
-    status: 'active',
-  },
-  {
-    id: '5',
-    name: 'Old Generator',
-    category: 'Equipment',
-    serialNumber: 'GEN-2018-001',
-    location: 'Storage',
-    purchaseDate: new Date('2018-05-12'),
-    purchaseValue: 150000,
-    status: 'damaged',
-  },
-  {
-    id: '6',
-    name: 'Plastic Chairs (200)',
-    category: 'Furniture',
-    serialNumber: 'CH-2021-200',
-    location: 'Main Sanctuary',
-    purchaseDate: new Date('2021-11-25'),
-    purchaseValue: 120000,
-    status: 'active',
-  },
-];
+// Placeholder - will be replaced with database when assets table is created
+const assets: Asset[] = [];
 
 const Assets = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const { formatCurrency } = useChurchSettings();
+  const { isAuthenticated, loading: authLoading } = useAuth();
+
+  if (authLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <AuthForm />;
+  }
 
   const filteredAssets = assets.filter((asset) => {
     const matchesSearch =
@@ -193,16 +149,19 @@ const Assets = () => {
         </div>
 
         {/* Assets Grid */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filteredAssets.map((asset) => (
-            <AssetCard key={asset.id} asset={asset} />
-          ))}
-        </div>
-
-        {filteredAssets.length === 0 && (
+        {filteredAssets.length > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {filteredAssets.map((asset) => (
+              <AssetCard key={asset.id} asset={asset} formatCurrency={formatCurrency} />
+            ))}
+          </div>
+        ) : (
           <div className="empty-state mt-8">
             <Package className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
             <p className="text-muted-foreground">No assets found</p>
+            <p className="text-sm text-muted-foreground mt-2">
+              Click "Add Asset" to register your first church asset
+            </p>
           </div>
         )}
       </div>
@@ -210,7 +169,7 @@ const Assets = () => {
   );
 };
 
-function AssetCard({ asset }: { asset: Asset }) {
+function AssetCard({ asset, formatCurrency }: { asset: Asset; formatCurrency: (amount: number) => string }) {
   const statusStyles = {
     active: 'bg-income/10 text-income',
     damaged: 'bg-expense/10 text-expense',
