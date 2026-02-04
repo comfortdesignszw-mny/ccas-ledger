@@ -35,19 +35,7 @@ export function useAuth() {
     if (error) throw error;
   };
 
-  const signUp = async (email: string, password: string, fullName: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        emailRedirectTo: window.location.origin,
-        data: {
-          full_name: fullName,
-        },
-      },
-    });
-    if (error) throw error;
-  };
+  // Note: Public signup is disabled. Users are created by admins via UserDialog.
 
   const signOut = async () => {
     const { error } = await supabase.auth.signOut();
@@ -59,7 +47,6 @@ export function useAuth() {
     session,
     loading,
     signIn,
-    signUp,
     signOut,
     isAuthenticated: !!user,
   };
