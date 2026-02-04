@@ -6,6 +6,7 @@ import { IncomeExpenseChart } from '@/components/dashboard/IncomeExpenseChart';
 import { CategoryPieChart } from '@/components/dashboard/CategoryPieChart';
 import { RecentTransactions } from '@/components/dashboard/RecentTransactions';
 import { TransactionDialog } from '@/components/transactions/TransactionDialog';
+import { FloatingActionButton } from '@/components/layout/FloatingActionButton';
 import { 
   useTransactions, 
   getFinancialSummary, 
@@ -160,6 +161,8 @@ const Dashboard = () => {
         open={transactionDialogOpen} 
         onOpenChange={setTransactionDialogOpen} 
       />
+
+      <FloatingActionButton onClick={() => setTransactionDialogOpen(true)} />
     </AppLayout>
   );
 };

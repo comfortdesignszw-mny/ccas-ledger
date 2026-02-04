@@ -38,6 +38,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { TransactionDialog } from '@/components/transactions/TransactionDialog';
+import { FloatingActionButton } from '@/components/layout/FloatingActionButton';
 import { useTransactions, useDeleteTransaction, type Transaction } from '@/hooks/useTransactions';
 import { useCategories } from '@/hooks/useCategories';
 import { useAuth } from '@/hooks/useAuth';
@@ -255,6 +256,8 @@ const Transactions = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <FloatingActionButton onClick={() => setIsDialogOpen(true)} />
     </AppLayout>
   );
 };
