@@ -14,6 +14,48 @@ export type Database = {
   }
   public: {
     Tables: {
+      assets: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string
+          id: string
+          location: string | null
+          name: string
+          purchase_date: string | null
+          purchase_value: number
+          serial_number: string | null
+          status: Database["public"]["Enums"]["asset_status"]
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          created_by: string
+          id?: string
+          location?: string | null
+          name: string
+          purchase_date?: string | null
+          purchase_value?: number
+          serial_number?: string | null
+          status?: Database["public"]["Enums"]["asset_status"]
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string
+          id?: string
+          location?: string | null
+          name?: string
+          purchase_date?: string | null
+          purchase_value?: number
+          serial_number?: string | null
+          status?: Database["public"]["Enums"]["asset_status"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           created_at: string
@@ -35,6 +77,48 @@ export type Database = {
           id?: string
           name?: string
           type?: Database["public"]["Enums"]["transaction_type"]
+        }
+        Relationships: []
+      }
+      events: {
+        Row: {
+          collected: number
+          created_at: string
+          created_by: string
+          description: string | null
+          event_date: string
+          expected_per_member: number
+          id: string
+          name: string
+          status: Database["public"]["Enums"]["event_status"]
+          total_members: number
+          updated_at: string
+        }
+        Insert: {
+          collected?: number
+          created_at?: string
+          created_by: string
+          description?: string | null
+          event_date: string
+          expected_per_member?: number
+          id?: string
+          name: string
+          status?: Database["public"]["Enums"]["event_status"]
+          total_members?: number
+          updated_at?: string
+        }
+        Update: {
+          collected?: number
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          event_date?: string
+          expected_per_member?: number
+          id?: string
+          name?: string
+          status?: Database["public"]["Enums"]["event_status"]
+          total_members?: number
+          updated_at?: string
         }
         Relationships: []
       }
@@ -145,6 +229,8 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "finance_officer" | "leader" | "auditor"
+      asset_status: "active" | "damaged" | "sold"
+      event_status: "upcoming" | "completed" | "cancelled"
       payment_method: "cash" | "bank" | "mobile_money"
       transaction_type: "income" | "expense"
       user_status: "active" | "disabled"
@@ -276,6 +362,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "finance_officer", "leader", "auditor"],
+      asset_status: ["active", "damaged", "sold"],
+      event_status: ["upcoming", "completed", "cancelled"],
       payment_method: ["cash", "bank", "mobile_money"],
       transaction_type: ["income", "expense"],
       user_status: ["active", "disabled"],

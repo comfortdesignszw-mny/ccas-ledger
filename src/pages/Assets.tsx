@@ -6,45 +6,25 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useChurchSettings } from '@/contexts/ChurchSettingsContext';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthForm } from '@/components/auth/AuthForm';
+import { AssetDialog } from '@/components/assets/AssetDialog';
+import { useAssets, type Asset } from '@/hooks/useAssets';
 import { cn } from '@/lib/utils';
-
-type AssetStatus = 'active' | 'damaged' | 'sold';
-
-interface Asset {
-  id: string;
-  name: string;
-  category: string;
-  serialNumber: string;
-  location: string;
-  purchaseDate: Date;
-  purchaseValue: number;
-  status: AssetStatus;
-}
-
-// Placeholder - will be replaced with database when assets table is created
-const assets: Asset[] = [];
 
 const Assets = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [dialogOpen, setDialogOpen] = useState(false);
   const { formatCurrency } = useChurchSettings();
   const { isAuthenticated, loading: authLoading } = useAuth();
+  const { data: assets = [], isLoading } = useAssets();
 
   if (authLoading) {
     return (
@@ -62,15 +42,14 @@ const Assets = () => {
     const matchesSearch =
       asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       asset.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      asset.serialNumber.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus =
-      statusFilter === 'all' || asset.status === statusFilter;
+      (asset.serial_number || '').toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || asset.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
   const totalValue = assets
     .filter((a) => a.status === 'active')
-    .reduce((sum, a) => sum + a.purchaseValue, 0);
+    .reduce((sum, a) => sum + Number(a.purchase_value), 0);
 
   const statusCounts = {
     active: assets.filter((a) => a.status === 'active').length,
@@ -85,6 +64,7 @@ const Assets = () => {
         subtitle="Track and manage church property"
         showAddButton
         addButtonLabel="Add Asset"
+        onAddClick={() => setDialogOpen(true)}
       />
 
       <div className="page-container">
@@ -112,33 +92,22 @@ const Assets = () => {
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Active Assets</p>
-              <p className="text-2xl font-bold text-income">
-                {statusCounts.active}
-              </p>
+              <p className="text-2xl font-bold text-income">{statusCounts.active}</p>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground">Damaged</p>
-              <p className="text-2xl font-bold text-expense">
-                {statusCounts.damaged}
-              </p>
+              <p className="text-2xl font-bold text-expense">{statusCounts.damaged}</p>
             </CardContent>
           </Card>
         </div>
 
         {/* Filters */}
         <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center">
-          <Input
-            placeholder="Search assets..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full sm:w-64"
-          />
+          <Input placeholder="Search assets..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="w-full sm:w-64" />
           <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="w-full sm:w-36">
-              <SelectValue placeholder="Status" />
-            </SelectTrigger>
+            <SelectTrigger className="w-full sm:w-36"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Status</SelectItem>
               <SelectItem value="active">Active</SelectItem>
@@ -149,7 +118,11 @@ const Assets = () => {
         </div>
 
         {/* Assets Grid */}
-        {filteredAssets.length > 0 ? (
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+          </div>
+        ) : filteredAssets.length > 0 ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filteredAssets.map((asset) => (
               <AssetCard key={asset.id} asset={asset} formatCurrency={formatCurrency} />
@@ -159,12 +132,12 @@ const Assets = () => {
           <div className="empty-state mt-8">
             <Package className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
             <p className="text-muted-foreground">No assets found</p>
-            <p className="text-sm text-muted-foreground mt-2">
-              Click "Add Asset" to register your first church asset
-            </p>
+            <p className="text-sm text-muted-foreground mt-2">Click "Add Asset" to register your first church asset</p>
           </div>
         )}
       </div>
+
+      <AssetDialog open={dialogOpen} onOpenChange={setDialogOpen} />
     </AppLayout>
   );
 };
@@ -186,21 +159,13 @@ function AssetCard({ asset, formatCurrency }: { asset: Asset; formatCurrency: (a
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8"><MoreHorizontal className="h-4 w-4" /></Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem className="gap-2">
-                <Eye className="h-4 w-4" /> View
-              </DropdownMenuItem>
-              <DropdownMenuItem className="gap-2">
-                <Edit className="h-4 w-4" /> Edit
-              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2"><Eye className="h-4 w-4" /> View</DropdownMenuItem>
+              <DropdownMenuItem className="gap-2"><Edit className="h-4 w-4" /> Edit</DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuItem className="gap-2 text-destructive">
-                <Trash2 className="h-4 w-4" /> Delete
-              </DropdownMenuItem>
+              <DropdownMenuItem className="gap-2 text-destructive"><Trash2 className="h-4 w-4" /> Delete</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -208,28 +173,19 @@ function AssetCard({ asset, formatCurrency }: { asset: Asset; formatCurrency: (a
       <CardContent className="space-y-3">
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Serial No.</span>
-          <span className="font-mono text-xs">{asset.serialNumber}</span>
+          <span className="font-mono text-xs">{asset.serial_number || '—'}</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Location</span>
-          <span>{asset.location}</span>
+          <span>{asset.location || '—'}</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Purchase Value</span>
-          <span className="font-medium">
-            {formatCurrency(asset.purchaseValue)}
-          </span>
+          <span className="font-medium">{formatCurrency(Number(asset.purchase_value))}</span>
         </div>
         <div className="flex justify-between text-sm">
           <span className="text-muted-foreground">Status</span>
-          <span
-            className={cn(
-              'rounded-full px-2 py-0.5 text-xs font-medium capitalize',
-              statusStyles[asset.status]
-            )}
-          >
-            {asset.status}
-          </span>
+          <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium capitalize', statusStyles[asset.status])}>{asset.status}</span>
         </div>
       </CardContent>
     </Card>
