@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { CurrencyCode, CURRENCIES, Currency } from '@/types/currency';
+import { supabase } from '@/integrations/supabase/client';
 
 export interface ChurchInfo {
   name: string;
@@ -53,46 +54,101 @@ interface ChurchSettingsContextType {
   updateCurrency: (currency: CurrencyCode) => void;
   formatCurrency: (amount: number) => string;
   getCurrency: () => Currency;
+  loading: boolean;
 }
 
 const ChurchSettingsContext = createContext<ChurchSettingsContextType | undefined>(undefined);
 
-const STORAGE_KEY = 'church-accounting-settings';
+// Helper to map DB row to ChurchSettings
+function rowToSettings(row: any): ChurchSettings {
+  return {
+    currency: (row.currency || 'USD') as CurrencyCode,
+    churchInfo: {
+      name: row.name || '',
+      address: row.address || '',
+      phone: row.phone || '',
+      email: row.email || '',
+      logo: row.logo || undefined,
+      motto: row.motto || undefined,
+    },
+    notifications: row.notifications as ChurchSettings['notifications'] ?? DEFAULT_SETTINGS.notifications,
+    security: row.security as ChurchSettings['security'] ?? DEFAULT_SETTINGS.security,
+  };
+}
 
 export function ChurchSettingsProvider({ children }: { children: ReactNode }) {
-  const [settings, setSettings] = useState<ChurchSettings>(() => {
-    // Load from localStorage on initial render
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      if (stored) {
-        try {
-          return { ...DEFAULT_SETTINGS, ...JSON.parse(stored) };
-        } catch {
-          return DEFAULT_SETTINGS;
-        }
-      }
-    }
-    return DEFAULT_SETTINGS;
-  });
+  const [settings, setSettings] = useState<ChurchSettings>(DEFAULT_SETTINGS);
+  const [dbId, setDbId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Persist to localStorage whenever settings change
+  // Fetch settings from DB on mount
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
-  }, [settings]);
+    const fetchSettings = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('church_settings')
+          .select('*')
+          .limit(1)
+          .maybeSingle();
+
+        if (data && !error) {
+          setSettings(rowToSettings(data));
+          setDbId(data.id);
+        }
+      } catch {
+        // Fall back to defaults
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  const persistToDb = async (updated: ChurchSettings) => {
+    if (!dbId) return;
+    const { data: { user } } = await supabase.auth.getUser();
+    await supabase
+      .from('church_settings')
+      .update({
+        name: updated.churchInfo.name,
+        address: updated.churchInfo.address,
+        phone: updated.churchInfo.phone,
+        email: updated.churchInfo.email,
+        motto: updated.churchInfo.motto || null,
+        logo: updated.churchInfo.logo || null,
+        currency: updated.currency,
+        notifications: updated.notifications as any,
+        security: updated.security as any,
+        updated_by: user?.id || null,
+      })
+      .eq('id', dbId);
+  };
 
   const updateSettings = (newSettings: Partial<ChurchSettings>) => {
-    setSettings((prev) => ({ ...prev, ...newSettings }));
+    setSettings((prev) => {
+      const updated = { ...prev, ...newSettings };
+      persistToDb(updated);
+      return updated;
+    });
   };
 
   const updateChurchInfo = (info: Partial<ChurchInfo>) => {
-    setSettings((prev) => ({
-      ...prev,
-      churchInfo: { ...prev.churchInfo, ...info },
-    }));
+    setSettings((prev) => {
+      const updated = {
+        ...prev,
+        churchInfo: { ...prev.churchInfo, ...info },
+      };
+      persistToDb(updated);
+      return updated;
+    });
   };
 
   const updateCurrency = (currency: CurrencyCode) => {
-    setSettings((prev) => ({ ...prev, currency }));
+    setSettings((prev) => {
+      const updated = { ...prev, currency };
+      persistToDb(updated);
+      return updated;
+    });
   };
 
   const getCurrency = (): Currency => {
@@ -102,7 +158,6 @@ export function ChurchSettingsProvider({ children }: { children: ReactNode }) {
   const formatCurrency = (amount: number): string => {
     const currency = getCurrency();
     
-    // Handle ZIG specially since it may not be in all browsers
     if (currency.code === 'ZIG') {
       return `ZiG ${amount.toLocaleString('en-US', {
         minimumFractionDigits: 2,
@@ -118,7 +173,6 @@ export function ChurchSettingsProvider({ children }: { children: ReactNode }) {
         maximumFractionDigits: 2,
       }).format(amount);
     } catch {
-      // Fallback for unsupported currencies
       return `${currency.symbol}${amount.toLocaleString('en-US', {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
@@ -135,6 +189,7 @@ export function ChurchSettingsProvider({ children }: { children: ReactNode }) {
         updateCurrency,
         formatCurrency,
         getCurrency,
+        loading,
       }}
     >
       {children}
