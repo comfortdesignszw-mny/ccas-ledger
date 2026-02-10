@@ -80,6 +80,54 @@ export type Database = {
         }
         Relationships: []
       }
+      church_settings: {
+        Row: {
+          address: string
+          created_at: string
+          currency: string
+          email: string
+          id: string
+          logo: string | null
+          motto: string | null
+          name: string
+          notifications: Json
+          phone: string
+          security: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          address?: string
+          created_at?: string
+          currency?: string
+          email?: string
+          id?: string
+          logo?: string | null
+          motto?: string | null
+          name?: string
+          notifications?: Json
+          phone?: string
+          security?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          address?: string
+          created_at?: string
+          currency?: string
+          email?: string
+          id?: string
+          logo?: string | null
+          motto?: string | null
+          name?: string
+          notifications?: Json
+          phone?: string
+          security?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       events: {
         Row: {
           collected: number
