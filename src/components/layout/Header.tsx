@@ -9,6 +9,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { useMobileMenu } from './AppLayout';
 
 interface HeaderProps {
   title: string;
@@ -27,6 +28,7 @@ export function Header({
   onAddClick,
   addButtonLabel = 'Add New',
 }: HeaderProps) {
+  const { open: openMobileMenu } = useMobileMenu();
   return (
     <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/60 sm:px-6">
       <div className="flex items-center gap-4">
@@ -34,7 +36,7 @@ export function Header({
           variant="ghost"
           size="icon"
           className="md:hidden"
-          onClick={onMenuClick}
+          onClick={onMenuClick || openMobileMenu}
         >
           <Menu className="h-5 w-5" />
         </Button>
