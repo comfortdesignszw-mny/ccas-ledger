@@ -85,7 +85,7 @@ export function ChurchSettingsProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const fetchSettings = async () => {
       try {
-        const { data, error } = await supabase
+        const { data, error } = await (supabase as any)
           .from('church_settings')
           .select('*')
           .limit(1)
@@ -107,7 +107,7 @@ export function ChurchSettingsProvider({ children }: { children: ReactNode }) {
   const persistToDb = async (updated: ChurchSettings) => {
     if (!dbId) return;
     const { data: { user } } = await supabase.auth.getUser();
-    await supabase
+    await (supabase as any)
       .from('church_settings')
       .update({
         name: updated.churchInfo.name,
