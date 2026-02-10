@@ -1,6 +1,14 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, createContext, useContext, useState } from 'react';
 import { Sidebar } from './Sidebar';
-import { cn } from '@/lib/utils';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+
+interface MobileMenuContextType {
+  open: () => void;
+  close: () => void;
+}
+
+const MobileMenuContext = createContext<MobileMenuContextType>({ open: () => {}, close: () => {} });
+export const useMobileMenu = () => useContext(MobileMenuContext);
 
 interface AppLayoutProps {
   children: ReactNode;
@@ -9,32 +17,31 @@ interface AppLayoutProps {
 export function AppLayout({ children }: AppLayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
+  const ctx = {
+    open: () => setMobileMenuOpen(true),
+    close: () => setMobileMenuOpen(false),
+  };
+
   return (
-    <div className="flex min-h-screen bg-background">
-      {/* Desktop Sidebar */}
-      <div className="hidden md:flex">
-        <Sidebar />
-      </div>
-
-      {/* Mobile Sidebar Overlay */}
-      {mobileMenuOpen && (
-        <div
-          className="fixed inset-0 z-50 bg-background/80 backdrop-blur-sm md:hidden"
-          onClick={() => setMobileMenuOpen(false)}
-        >
-          <div
-            className="fixed inset-y-0 left-0 w-64"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <Sidebar />
-          </div>
+    <MobileMenuContext.Provider value={ctx}>
+      <div className="flex min-h-screen bg-background">
+        {/* Desktop Sidebar */}
+        <div className="hidden md:flex">
+          <Sidebar />
         </div>
-      )}
 
-      {/* Main Content */}
-      <main className="flex-1 overflow-y-auto">
-        {children}
-      </main>
-    </div>
+        {/* Mobile Sidebar */}
+        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+          <SheetContent side="left" className="w-64 p-0">
+            <Sidebar onNavigate={() => setMobileMenuOpen(false)} />
+          </SheetContent>
+        </Sheet>
+
+        {/* Main Content */}
+        <main className="flex-1 overflow-y-auto">
+          {children}
+        </main>
+      </div>
+    </MobileMenuContext.Provider>
   );
 }
