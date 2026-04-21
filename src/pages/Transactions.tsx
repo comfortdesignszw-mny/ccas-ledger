@@ -4,6 +4,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Download,
+  FileText,
+  FileSpreadsheet,
   MoreHorizontal,
   Eye,
   Edit,
