@@ -1,6 +1,7 @@
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { CategorySummary } from '@/types';
+import { useChurchSettings } from '@/contexts/ChurchSettingsContext';
 
 interface CategoryPieChartProps {
   data: CategorySummary[];
@@ -8,14 +9,15 @@ interface CategoryPieChartProps {
   emptyMessage?: string;
 }
 
-const CustomTooltip = ({ active, payload }: any) => {
+function CustomTooltip({ active, payload }: any) {
+  const { formatCurrency } = useChurchSettings();
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
       <div className="rounded-lg border bg-card p-3 shadow-lg">
         <p className="font-medium">{data.category}</p>
         <p className="text-sm text-muted-foreground">
-          KES {data.amount.toLocaleString()}
+          {formatCurrency(data.amount)}
         </p>
         <p className="text-xs text-muted-foreground">
           {data.percentage.toFixed(1)}% of total
@@ -24,7 +26,7 @@ const CustomTooltip = ({ active, payload }: any) => {
     );
   }
   return null;
-};
+}
 
 const CustomLegend = ({ payload }: any) => {
   return (

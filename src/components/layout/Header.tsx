@@ -88,7 +88,7 @@ export function Header({
             <DropdownMenuItem className="flex flex-col items-start gap-1 py-3">
               <span className="font-medium">Large transaction recorded</span>
               <span className="text-xs text-muted-foreground">
-                A donation of KES 500,000 was recorded
+                A large donation was recorded
               </span>
             </DropdownMenuItem>
             <DropdownMenuItem className="flex flex-col items-start gap-1 py-3">
