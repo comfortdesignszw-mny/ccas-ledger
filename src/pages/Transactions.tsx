@@ -64,7 +64,12 @@ const Transactions = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   
-  const { formatCurrency } = useChurchSettings();
+  const { settings, getCurrency, formatCurrency } = useChurchSettings();
+  const exportCtx = {
+    churchInfo: settings.churchInfo,
+    currency: getCurrency(),
+    formatCurrency,
+  };
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { data: transactions = [], isLoading } = useTransactions();
   const { data: categories = [] } = useCategories();
