@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Building2, Bell, Lock, Database, Download, Globe } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Building2, Bell, Lock, Database, Download, Globe, Upload, X } from 'lucide-react';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { AuthForm } from '@/components/auth/AuthForm';
 import { CURRENCY_LIST, CurrencyCode } from '@/types/currency';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 
 const Settings = () => {
   const { settings, updateChurchInfo, updateCurrency, updateSettings, getCurrency } = useChurchSettings();
@@ -30,6 +31,9 @@ const Settings = () => {
   const [churchPhone, setChurchPhone] = useState(settings.churchInfo.phone);
   const [churchEmail, setChurchEmail] = useState(settings.churchInfo.email);
   const [churchMotto, setChurchMotto] = useState(settings.churchInfo.motto || '');
+  const [logoUrl, setLogoUrl] = useState(settings.churchInfo.logo || '');
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Sync local state when settings change
   useEffect(() => {
@@ -38,6 +42,7 @@ const Settings = () => {
     setChurchPhone(settings.churchInfo.phone);
     setChurchEmail(settings.churchInfo.email);
     setChurchMotto(settings.churchInfo.motto || '');
+    setLogoUrl(settings.churchInfo.logo || '');
   }, [settings.churchInfo]);
 
   if (authLoading) {
@@ -52,6 +57,41 @@ const Settings = () => {
     return <AuthForm />;
   }
 
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select an image file');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error('Image must be less than 2MB');
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop();
+      const filePath = `logo-${Date.now()}.${ext}`;
+      const { error: uploadError } = await supabase.storage
+        .from('church-logos')
+        .upload(filePath, file, { upsert: true });
+      if (uploadError) throw uploadError;
+      const { data: { publicUrl } } = supabase.storage
+        .from('church-logos')
+        .getPublicUrl(filePath);
+      setLogoUrl(publicUrl);
+      toast.success('Logo uploaded successfully!');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to upload logo');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleRemoveLogo = () => {
+    setLogoUrl('');
+  };
+
   const handleSaveChurchInfo = () => {
     updateChurchInfo({
       name: churchName,
@@ -59,6 +99,7 @@ const Settings = () => {
       phone: churchPhone,
       email: churchEmail,
       motto: churchMotto,
+      logo: logoUrl || undefined,
     });
     toast.success('Church information saved successfully!');
   };
@@ -184,6 +225,55 @@ const Settings = () => {
                   />
                 </div>
               </div>
+
+              {/* Logo Upload */}
+              <div className="space-y-2">
+                <Label>Church Logo</Label>
+                <div className="flex items-center gap-4">
+                  {logoUrl ? (
+                    <div className="relative">
+                      <img
+                        src={logoUrl}
+                        alt="Church logo"
+                        className="h-16 w-16 rounded-lg object-cover border"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleRemoveLogo}
+                        className="absolute -top-2 -right-2 rounded-full bg-destructive text-destructive-foreground p-0.5"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex h-16 w-16 items-center justify-center rounded-lg border-2 border-dashed border-muted-foreground/30">
+                      <Building2 className="h-6 w-6 text-muted-foreground/50" />
+                    </div>
+                  )}
+                  <div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={uploading}
+                      onClick={() => fileInputRef.current?.click()}
+                      className="gap-2"
+                    >
+                      <Upload className="h-4 w-4" />
+                      {uploading ? 'Uploading...' : 'Upload Logo'}
+                    </Button>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleLogoUpload}
+                    />
+                    <p className="text-xs text-muted-foreground mt-1">Max 2MB, JPG/PNG</p>
+                  </div>
+                </div>
+              </div>
+
               <Button onClick={handleSaveChurchInfo}>Save Changes</Button>
             </CardContent>
           </Card>
