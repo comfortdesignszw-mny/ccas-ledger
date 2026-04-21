@@ -46,6 +46,10 @@ export function useTransactions() {
             id,
             name,
             type
+          ),
+          events (
+            id,
+            name
           )
         `)
         .order('transaction_date', { ascending: false });
