@@ -64,6 +64,7 @@ interface TransactionDialogProps {
 export function TransactionDialog({ open, onOpenChange }: TransactionDialogProps) {
   const [transactionType, setTransactionType] = useState<'income' | 'expense'>('income');
   const { data: categories = [] } = useCategories();
+  const { data: events = [] } = useEvents();
   const createTransaction = useCreateTransaction();
 
   const form = useForm<TransactionFormData>({
@@ -71,6 +72,7 @@ export function TransactionDialog({ open, onOpenChange }: TransactionDialogProps
     defaultValues: {
       type: 'income',
       category_id: '',
+      event_name: '',
       amount: 0,
       transaction_date: new Date(),
       payment_method: 'cash',
@@ -79,20 +81,43 @@ export function TransactionDialog({ open, onOpenChange }: TransactionDialogProps
   });
 
   const filteredCategories = categories.filter(cat => cat.type === transactionType);
+  const selectedCategoryId = form.watch('category_id');
+  const isSpecificEvent = selectedCategoryId === SPECIFIC_EVENT_VALUE;
 
   const handleTypeChange = (type: 'income' | 'expense') => {
     setTransactionType(type);
     form.setValue('type', type);
     form.setValue('category_id', '');
+    form.setValue('event_name', '');
   };
 
   const onSubmit = async (data: TransactionFormData) => {
+    let categoryId = data.category_id;
+    let description = data.description;
+
+    if (data.category_id === SPECIFIC_EVENT_VALUE) {
+      let specificEventCat = categories.find(
+        (c) => c.type === 'income' && c.name.toLowerCase() === 'specific event'
+      );
+      if (!specificEventCat) {
+        const { data: newCat, error } = await supabase
+          .from('categories')
+          .insert({ name: 'Specific Event', type: 'income', description: 'Contributions tied to a specific event' })
+          .select()
+          .single();
+        if (error || !newCat) return;
+        specificEventCat = newCat as typeof specificEventCat;
+      }
+      categoryId = specificEventCat!.id;
+      description = `[Event: ${data.event_name}] ${data.description}`;
+    }
+
     await createTransaction.mutateAsync({
       type: data.type,
-      category_id: data.category_id,
+      category_id: categoryId,
       amount: data.amount,
       payment_method: data.payment_method,
-      description: data.description,
+      description,
       transaction_date: format(data.transaction_date, 'yyyy-MM-dd'),
     });
     form.reset();
