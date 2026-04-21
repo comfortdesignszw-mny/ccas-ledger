@@ -17,10 +17,13 @@ export function ReportLetterhead({ reportTitle, reportPeriod, generatedDate }: R
       {/* Church Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-4">
-          {/* Logo Placeholder */}
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
-            <Building2 className="h-8 w-8" />
-          </div>
+          {churchInfo.logo ? (
+            <img src={churchInfo.logo} alt={churchInfo.name} className="h-16 w-16 rounded-full object-cover" />
+          ) : (
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-primary text-primary-foreground">
+              <Building2 className="h-8 w-8" />
+            </div>
+          )}
           <div>
             <h1 className="text-2xl font-bold text-foreground">{churchInfo.name}</h1>
             {churchInfo.motto && (
