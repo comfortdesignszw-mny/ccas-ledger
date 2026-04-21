@@ -202,12 +202,51 @@ export function TransactionDialog({ open, onOpenChange }: TransactionDialogProps
                           {cat.name}
                         </SelectItem>
                       ))}
+                      {transactionType === 'income' && (
+                        <SelectItem value={SPECIFIC_EVENT_VALUE}>
+                          Specific Event
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            {/* Event Name (only when Specific Event selected) */}
+            {isSpecificEvent && (
+              <FormField
+                control={form.control}
+                name="event_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Event Name</FormLabel>
+                    {events.length > 0 ? (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select or type an event" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {events.map((ev) => (
+                            <SelectItem key={ev.id} value={ev.name}>
+                              {ev.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <FormControl>
+                        <Input placeholder="Enter event name" {...field} />
+                      </FormControl>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {/* Date */}
             <FormField
