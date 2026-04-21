@@ -249,6 +249,7 @@ const Transactions = () => {
                       key={transaction.id}
                       transaction={transaction}
                       formatCurrency={formatCurrency}
+                      exportCtx={exportCtx}
                       onDelete={handleDeleteClick}
                     />
                   ))
