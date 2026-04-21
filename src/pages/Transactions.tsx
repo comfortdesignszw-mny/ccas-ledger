@@ -4,6 +4,8 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Download,
+  FileText,
+  FileSpreadsheet,
   MoreHorizontal,
   Eye,
   Edit,
@@ -45,6 +47,13 @@ import { useAuth } from '@/hooks/useAuth';
 import { AuthForm } from '@/components/auth/AuthForm';
 import { cn } from '@/lib/utils';
 import { useChurchSettings } from '@/contexts/ChurchSettingsContext';
+import {
+  exportTransactionsCSV,
+  exportTransactionsPDF,
+  exportSingleTransactionCSV,
+  exportSingleTransactionPDF,
+} from '@/lib/exportTransactions';
+import { toast } from 'sonner';
 import { Skeleton } from '@/components/ui/skeleton';
 
 const Transactions = () => {
@@ -55,7 +64,12 @@ const Transactions = () => {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedTransactionId, setSelectedTransactionId] = useState<string | null>(null);
   
-  const { formatCurrency } = useChurchSettings();
+  const { settings, getCurrency, formatCurrency } = useChurchSettings();
+  const exportCtx = {
+    churchInfo: settings.churchInfo,
+    currency: getCurrency(),
+    formatCurrency,
+  };
   const { isAuthenticated, loading: authLoading } = useAuth();
   const { data: transactions = [], isLoading } = useTransactions();
   const { data: categories = [] } = useCategories();
@@ -177,10 +191,34 @@ const Transactions = () => {
             </Select>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-2">
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2" disabled={filteredTransactions.length === 0}>
+                  <Download className="h-4 w-4" />
+                  Export ({filteredTransactions.length})
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="gap-2"
+                  onClick={() => {
+                    exportTransactionsCSV(filteredTransactions, exportCtx);
+                    toast.success('CSV exported');
+                  }}
+                >
+                  <FileSpreadsheet className="h-4 w-4" /> Download as CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="gap-2"
+                  onClick={async () => {
+                    await exportTransactionsPDF(filteredTransactions, exportCtx);
+                    toast.success('PDF exported');
+                  }}
+                >
+                  <FileText className="h-4 w-4" /> Download as PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -211,6 +249,7 @@ const Transactions = () => {
                       key={transaction.id}
                       transaction={transaction}
                       formatCurrency={formatCurrency}
+                      exportCtx={exportCtx}
                       onDelete={handleDeleteClick}
                     />
                   ))
@@ -265,10 +304,12 @@ const Transactions = () => {
 function TransactionRow({ 
   transaction, 
   formatCurrency,
+  exportCtx,
   onDelete,
 }: { 
   transaction: Transaction;
   formatCurrency: (amount: number) => string;
+  exportCtx: Parameters<typeof exportSingleTransactionCSV>[1];
   onDelete: (id: string) => void;
 }) {
   const isIncome = transaction.type === 'income';
@@ -332,6 +373,25 @@ function TransactionRow({
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2">
               <Edit className="h-4 w-4" /> Edit
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="gap-2"
+              onClick={() => {
+                exportSingleTransactionCSV(transaction, exportCtx);
+                toast.success('CSV exported');
+              }}
+            >
+              <FileSpreadsheet className="h-4 w-4" /> Download CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="gap-2"
+              onClick={async () => {
+                await exportSingleTransactionPDF(transaction, exportCtx);
+                toast.success('PDF exported');
+              }}
+            >
+              <FileText className="h-4 w-4" /> Download PDF
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
