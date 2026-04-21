@@ -191,10 +191,34 @@ const Transactions = () => {
             </Select>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" size="sm" className="gap-2">
-              <Download className="h-4 w-4" />
-              Export
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm" className="gap-2" disabled={filteredTransactions.length === 0}>
+                  <Download className="h-4 w-4" />
+                  Export ({filteredTransactions.length})
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem
+                  className="gap-2"
+                  onClick={() => {
+                    exportTransactionsCSV(filteredTransactions, exportCtx);
+                    toast.success('CSV exported');
+                  }}
+                >
+                  <FileSpreadsheet className="h-4 w-4" /> Download as CSV
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  className="gap-2"
+                  onClick={async () => {
+                    await exportTransactionsPDF(filteredTransactions, exportCtx);
+                    toast.success('PDF exported');
+                  }}
+                >
+                  <FileText className="h-4 w-4" /> Download as PDF
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
