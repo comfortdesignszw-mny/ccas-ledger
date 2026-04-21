@@ -230,8 +230,7 @@ export async function exportTransactionsPDF(
   const totalExpense = transactions.filter((t) => t.type === 'expense').reduce((s, t) => s + Number(t.amount), 0);
 
   autoTable(doc, {
-    // @ts-expect-error autotable adds lastAutoTable
-    startY: (doc as any).lastAutoTable.finalY + 14,
+    startY: (doc as unknown as { lastAutoTable: { finalY: number } }).lastAutoTable.finalY + 14,
     body: [
       ['Total Income', ctx.formatCurrency(totalIncome)],
       ['Total Expenses', ctx.formatCurrency(totalExpense)],
