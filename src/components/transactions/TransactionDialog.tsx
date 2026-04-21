@@ -73,7 +73,7 @@ export function TransactionDialog({ open, onOpenChange }: TransactionDialogProps
     defaultValues: {
       type: 'income',
       category_id: '',
-      event_name: '',
+      event_id: '',
       amount: 0,
       transaction_date: new Date(),
       payment_method: 'cash',
@@ -89,12 +89,13 @@ export function TransactionDialog({ open, onOpenChange }: TransactionDialogProps
     setTransactionType(type);
     form.setValue('type', type);
     form.setValue('category_id', '');
-    form.setValue('event_name', '');
+    form.setValue('event_id', '');
   };
 
   const onSubmit = async (data: TransactionFormData) => {
     let categoryId = data.category_id;
     let description = data.description;
+    let eventId: string | null = data.event_id || null;
 
     if (data.category_id === SPECIFIC_EVENT_VALUE) {
       let specificEventCat = categories.find(
@@ -110,12 +111,17 @@ export function TransactionDialog({ open, onOpenChange }: TransactionDialogProps
         specificEventCat = newCat as typeof specificEventCat;
       }
       categoryId = specificEventCat!.id;
-      description = `[Event: ${data.event_name}] ${data.description}`;
+      const ev = events.find((e) => e.id === data.event_id);
+      if (ev) description = `[Event: ${ev.name}] ${data.description}`;
+    } else {
+      // event_id only applies to Specific Event category
+      eventId = null;
     }
 
     await createTransaction.mutateAsync({
       type: data.type,
       category_id: categoryId,
+      event_id: eventId,
       amount: data.amount,
       payment_method: data.payment_method,
       description,
