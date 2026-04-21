@@ -36,16 +36,23 @@ import {
 } from '@/components/ui/popover';
 import { useCategories } from '@/hooks/useCategories';
 import { useCreateTransaction } from '@/hooks/useTransactions';
+import { useEvents } from '@/hooks/useEvents';
 import { cn } from '@/lib/utils';
+
+const SPECIFIC_EVENT_VALUE = '__specific_event__';
 
 const transactionSchema = z.object({
   type: z.enum(['income', 'expense']),
   category_id: z.string().min(1, 'Please select a category'),
+  event_name: z.string().optional(),
   amount: z.coerce.number().positive('Amount must be greater than 0'),
   transaction_date: z.date(),
   payment_method: z.enum(['cash', 'bank', 'mobile_money']),
   description: z.string().min(3, 'Description must be at least 3 characters').max(200, 'Description must be less than 200 characters'),
-});
+}).refine(
+  (d) => d.category_id !== SPECIFIC_EVENT_VALUE || (d.event_name && d.event_name.trim().length >= 2),
+  { message: 'Please enter an event name', path: ['event_name'] }
+);
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
 
