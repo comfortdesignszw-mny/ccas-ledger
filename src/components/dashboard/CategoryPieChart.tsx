@@ -15,7 +15,7 @@ const CustomTooltip = ({ active, payload }: any) => {
       <div className="rounded-lg border bg-card p-3 shadow-lg">
         <p className="font-medium">{data.category}</p>
         <p className="text-sm text-muted-foreground">
-          KES {data.amount.toLocaleString()}
+          {formatCurrency(data.amount)}
         </p>
         <p className="text-xs text-muted-foreground">
           {data.percentage.toFixed(1)}% of total

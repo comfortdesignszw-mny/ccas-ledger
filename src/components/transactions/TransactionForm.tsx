@@ -112,7 +112,7 @@ export function TransactionForm({ onSubmit, defaultValues }: TransactionFormProp
           name="amount"
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Amount (KES)</FormLabel>
+              <FormLabel>Amount</FormLabel>
               <FormControl>
                 <Input
                   type="number"

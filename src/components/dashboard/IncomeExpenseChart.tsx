@@ -38,7 +38,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
             />
             <span className="text-muted-foreground">{entry.name}:</span>
             <span className="font-medium">
-              KES {entry.value.toLocaleString()}
+              {formatCurrency(entry.value)}
             </span>
           </div>
         ))}
