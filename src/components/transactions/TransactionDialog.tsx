@@ -45,14 +45,14 @@ const SPECIFIC_EVENT_VALUE = '__specific_event__';
 const transactionSchema = z.object({
   type: z.enum(['income', 'expense']),
   category_id: z.string().min(1, 'Please select a category'),
-  event_name: z.string().optional(),
+  event_id: z.string().optional(),
   amount: z.coerce.number().positive('Amount must be greater than 0'),
   transaction_date: z.date(),
   payment_method: z.enum(['cash', 'bank', 'mobile_money']),
   description: z.string().min(3, 'Description must be at least 3 characters').max(200, 'Description must be less than 200 characters'),
 }).refine(
-  (d) => d.category_id !== SPECIFIC_EVENT_VALUE || (d.event_name && d.event_name.trim().length >= 2),
-  { message: 'Please enter an event name', path: ['event_name'] }
+  (d) => d.category_id !== SPECIFIC_EVENT_VALUE || (d.event_id && d.event_id.length > 0),
+  { message: 'Please select an event', path: ['event_id'] }
 );
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
@@ -73,7 +73,7 @@ export function TransactionDialog({ open, onOpenChange }: TransactionDialogProps
     defaultValues: {
       type: 'income',
       category_id: '',
-      event_name: '',
+      event_id: '',
       amount: 0,
       transaction_date: new Date(),
       payment_method: 'cash',
@@ -89,12 +89,13 @@ export function TransactionDialog({ open, onOpenChange }: TransactionDialogProps
     setTransactionType(type);
     form.setValue('type', type);
     form.setValue('category_id', '');
-    form.setValue('event_name', '');
+    form.setValue('event_id', '');
   };
 
   const onSubmit = async (data: TransactionFormData) => {
     let categoryId = data.category_id;
     let description = data.description;
+    let eventId: string | null = data.event_id || null;
 
     if (data.category_id === SPECIFIC_EVENT_VALUE) {
       let specificEventCat = categories.find(
@@ -110,12 +111,17 @@ export function TransactionDialog({ open, onOpenChange }: TransactionDialogProps
         specificEventCat = newCat as typeof specificEventCat;
       }
       categoryId = specificEventCat!.id;
-      description = `[Event: ${data.event_name}] ${data.description}`;
+      const ev = events.find((e) => e.id === data.event_id);
+      if (ev) description = `[Event: ${ev.name}] ${data.description}`;
+    } else {
+      // event_id only applies to Specific Event category
+      eventId = null;
     }
 
     await createTransaction.mutateAsync({
       type: data.type,
       category_id: categoryId,
+      event_id: eventId,
       amount: data.amount,
       payment_method: data.payment_method,
       description,
@@ -214,34 +220,30 @@ export function TransactionDialog({ open, onOpenChange }: TransactionDialogProps
               )}
             />
 
-            {/* Event Name (only when Specific Event selected) */}
+            {/* Event (only when Specific Event selected) */}
             {isSpecificEvent && (
               <FormField
                 control={form.control}
-                name="event_name"
+                name="event_id"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Event Name</FormLabel>
-                    {events.length > 0 ? (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select or type an event" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {events.map((ev) => (
-                            <SelectItem key={ev.id} value={ev.name}>
-                              {ev.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
+                    <Select onValueChange={field.onChange} value={field.value as string | undefined}>
                       <FormControl>
-                        <Input placeholder="Enter event name" {...field} />
+                        <SelectTrigger>
+                          <SelectValue
+                            placeholder={events.length > 0 ? 'Select an event' : 'No events available — create one first'}
+                          />
+                        </SelectTrigger>
                       </FormControl>
-                    )}
+                      <SelectContent>
+                        {events.map((ev) => (
+                          <SelectItem key={ev.id} value={ev.id}>
+                            {ev.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

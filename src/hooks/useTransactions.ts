@@ -7,6 +7,7 @@ export interface Transaction {
   transaction_date: string;
   amount: number;
   category_id: string;
+  event_id: string | null;
   type: 'income' | 'expense';
   payment_method: 'cash' | 'bank' | 'mobile_money';
   description: string;
@@ -17,12 +18,17 @@ export interface Transaction {
     name: string;
     type: 'income' | 'expense';
   };
+  events?: {
+    id: string;
+    name: string;
+  } | null;
 }
 
 export interface TransactionInput {
   transaction_date: string;
   amount: number;
   category_id: string;
+  event_id?: string | null;
   type: 'income' | 'expense';
   payment_method: 'cash' | 'bank' | 'mobile_money';
   description: string;
@@ -40,6 +46,10 @@ export function useTransactions() {
             id,
             name,
             type
+          ),
+          events (
+            id,
+            name
           )
         `)
         .order('transaction_date', { ascending: false });
