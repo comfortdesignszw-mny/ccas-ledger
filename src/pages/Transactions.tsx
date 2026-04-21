@@ -304,10 +304,12 @@ const Transactions = () => {
 function TransactionRow({ 
   transaction, 
   formatCurrency,
+  exportCtx,
   onDelete,
 }: { 
   transaction: Transaction;
   formatCurrency: (amount: number) => string;
+  exportCtx: Parameters<typeof exportSingleTransactionCSV>[1];
   onDelete: (id: string) => void;
 }) {
   const isIncome = transaction.type === 'income';
@@ -371,6 +373,25 @@ function TransactionRow({
             </DropdownMenuItem>
             <DropdownMenuItem className="gap-2">
               <Edit className="h-4 w-4" /> Edit
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              className="gap-2"
+              onClick={() => {
+                exportSingleTransactionCSV(transaction, exportCtx);
+                toast.success('CSV exported');
+              }}
+            >
+              <FileSpreadsheet className="h-4 w-4" /> Download CSV
+            </DropdownMenuItem>
+            <DropdownMenuItem
+              className="gap-2"
+              onClick={async () => {
+                await exportSingleTransactionPDF(transaction, exportCtx);
+                toast.success('PDF exported');
+              }}
+            >
+              <FileText className="h-4 w-4" /> Download PDF
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 
