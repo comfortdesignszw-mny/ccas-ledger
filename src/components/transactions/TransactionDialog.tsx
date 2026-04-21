@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
+import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
   DialogContent,
@@ -36,16 +37,23 @@ import {
 } from '@/components/ui/popover';
 import { useCategories } from '@/hooks/useCategories';
 import { useCreateTransaction } from '@/hooks/useTransactions';
+import { useEvents } from '@/hooks/useEvents';
 import { cn } from '@/lib/utils';
+
+const SPECIFIC_EVENT_VALUE = '__specific_event__';
 
 const transactionSchema = z.object({
   type: z.enum(['income', 'expense']),
   category_id: z.string().min(1, 'Please select a category'),
+  event_name: z.string().optional(),
   amount: z.coerce.number().positive('Amount must be greater than 0'),
   transaction_date: z.date(),
   payment_method: z.enum(['cash', 'bank', 'mobile_money']),
   description: z.string().min(3, 'Description must be at least 3 characters').max(200, 'Description must be less than 200 characters'),
-});
+}).refine(
+  (d) => d.category_id !== SPECIFIC_EVENT_VALUE || (d.event_name && d.event_name.trim().length >= 2),
+  { message: 'Please enter an event name', path: ['event_name'] }
+);
 
 type TransactionFormData = z.infer<typeof transactionSchema>;
 
@@ -57,6 +65,7 @@ interface TransactionDialogProps {
 export function TransactionDialog({ open, onOpenChange }: TransactionDialogProps) {
   const [transactionType, setTransactionType] = useState<'income' | 'expense'>('income');
   const { data: categories = [] } = useCategories();
+  const { data: events = [] } = useEvents();
   const createTransaction = useCreateTransaction();
 
   const form = useForm<TransactionFormData>({
@@ -64,6 +73,7 @@ export function TransactionDialog({ open, onOpenChange }: TransactionDialogProps
     defaultValues: {
       type: 'income',
       category_id: '',
+      event_name: '',
       amount: 0,
       transaction_date: new Date(),
       payment_method: 'cash',
@@ -72,20 +82,43 @@ export function TransactionDialog({ open, onOpenChange }: TransactionDialogProps
   });
 
   const filteredCategories = categories.filter(cat => cat.type === transactionType);
+  const selectedCategoryId = form.watch('category_id');
+  const isSpecificEvent = selectedCategoryId === SPECIFIC_EVENT_VALUE;
 
   const handleTypeChange = (type: 'income' | 'expense') => {
     setTransactionType(type);
     form.setValue('type', type);
     form.setValue('category_id', '');
+    form.setValue('event_name', '');
   };
 
   const onSubmit = async (data: TransactionFormData) => {
+    let categoryId = data.category_id;
+    let description = data.description;
+
+    if (data.category_id === SPECIFIC_EVENT_VALUE) {
+      let specificEventCat = categories.find(
+        (c) => c.type === 'income' && c.name.toLowerCase() === 'specific event'
+      );
+      if (!specificEventCat) {
+        const { data: newCat, error } = await supabase
+          .from('categories')
+          .insert({ name: 'Specific Event', type: 'income', description: 'Contributions tied to a specific event' })
+          .select()
+          .single();
+        if (error || !newCat) return;
+        specificEventCat = newCat as typeof specificEventCat;
+      }
+      categoryId = specificEventCat!.id;
+      description = `[Event: ${data.event_name}] ${data.description}`;
+    }
+
     await createTransaction.mutateAsync({
       type: data.type,
-      category_id: data.category_id,
+      category_id: categoryId,
       amount: data.amount,
       payment_method: data.payment_method,
-      description: data.description,
+      description,
       transaction_date: format(data.transaction_date, 'yyyy-MM-dd'),
     });
     form.reset();
@@ -169,12 +202,51 @@ export function TransactionDialog({ open, onOpenChange }: TransactionDialogProps
                           {cat.name}
                         </SelectItem>
                       ))}
+                      {transactionType === 'income' && (
+                        <SelectItem value={SPECIFIC_EVENT_VALUE}>
+                          Specific Event
+                        </SelectItem>
+                      )}
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )}
             />
+
+            {/* Event Name (only when Specific Event selected) */}
+            {isSpecificEvent && (
+              <FormField
+                control={form.control}
+                name="event_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Event Name</FormLabel>
+                    {events.length > 0 ? (
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select or type an event" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {events.map((ev) => (
+                            <SelectItem key={ev.id} value={ev.name}>
+                              {ev.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <FormControl>
+                        <Input placeholder="Enter event name" {...field} />
+                      </FormControl>
+                    )}
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
 
             {/* Date */}
             <FormField
