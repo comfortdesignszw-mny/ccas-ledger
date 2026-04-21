@@ -9,7 +9,8 @@ interface CategoryPieChartProps {
   emptyMessage?: string;
 }
 
-const CustomTooltip = ({ active, payload }: any) => {
+function CustomTooltip({ active, payload }: any) {
+  const { formatCurrency } = useChurchSettings();
   if (active && payload && payload.length) {
     const data = payload[0].payload;
     return (
@@ -25,7 +26,7 @@ const CustomTooltip = ({ active, payload }: any) => {
     );
   }
   return null;
-};
+}
 
 const CustomLegend = ({ payload }: any) => {
   return (

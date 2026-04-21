@@ -26,7 +26,8 @@ const formatYAxis = (value: number) => {
   return value.toString();
 };
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+function CustomTooltip({ active, payload, label }: any) {
+  const { formatCurrency } = useChurchSettings();
   if (active && payload && payload.length) {
     return (
       <div className="rounded-lg border bg-card p-3 shadow-lg">
@@ -47,7 +48,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     );
   }
   return null;
-};
+}
 
 export function IncomeExpenseChart({ data }: IncomeExpenseChartProps) {
   return (
