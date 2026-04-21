@@ -220,34 +220,30 @@ export function TransactionDialog({ open, onOpenChange }: TransactionDialogProps
               )}
             />
 
-            {/* Event Name (only when Specific Event selected) */}
+            {/* Event (only when Specific Event selected) */}
             {isSpecificEvent && (
               <FormField
                 control={form.control}
-                name="event_name"
+                name="event_id"
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Event Name</FormLabel>
-                    {events.length > 0 ? (
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select or type an event" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {events.map((ev) => (
-                            <SelectItem key={ev.id} value={ev.name}>
-                              {ev.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    ) : (
+                    <Select onValueChange={field.onChange} value={field.value as string | undefined}>
                       <FormControl>
-                        <Input placeholder="Enter event name" {...field} />
+                        <SelectTrigger>
+                          <SelectValue
+                            placeholder={events.length > 0 ? 'Select an event' : 'No events available — create one first'}
+                          />
+                        </SelectTrigger>
                       </FormControl>
-                    )}
+                      <SelectContent>
+                        {events.map((ev) => (
+                          <SelectItem key={ev.id} value={ev.id}>
+                            {ev.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
